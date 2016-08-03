@@ -17,11 +17,15 @@ if __name__ == "__main__":
       help="The ip of the OSC server")
   parser.add_argument("--port", type=int, default=5005,
       help="The port the OSC server is listening on")
+  parser.add_argument("--ifaceip", default="127.0.0.1",
+      help="The ip of the interface to send on if multicast")
+  parser.add_argument("--ttl", type=int, default="1",
+      help="TTL if multicast")
   args = parser.parse_args()
 
-  client = udp_client.UDPClient(args.ip, args.port)
+  client = udp_client.UDPClient(args.ip, args.port, args.ttl, args.ifaceip)
 
-  for x in range(10):
+  for x in range(100):
     msg = osc_message_builder.OscMessageBuilder(address="/filter")
     msg.add_arg(random.random())
     msg = msg.build()

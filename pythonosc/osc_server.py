@@ -31,7 +31,10 @@ loop.run_forever()
 """
 
 import asyncio
+import ipaddress
+import socket
 import socketserver
+import struct
 import time
 
 from pythonosc import osc_bundle
@@ -98,13 +101,24 @@ def _is_valid_request(request):
       osc_bundle.OscBundle.dgram_is_bundle(data)
       or osc_message.OscMessage.dgram_is_message(data))
 
-
 class OSCUDPServer(socketserver.UDPServer):
   """Superclass for different flavors of OSCUDPServer"""
 
-  def __init__(self, server_address, dispatcher):
-    super().__init__(server_address, _UDPHandler)
+  def __init__(self, server_address, dispatcher, interface=None):
+    
+    if (ipaddress.ip_address(server_address[0]).is_multicast):
+      super().__init__(('', server_address[1]),_UDPHandler)
+      if interface is None:
+        mreq = struct.pack("4sI", socket.inet_aton(server_address[0]), socket.INADDR_ANY)
+        self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+      else:
+        mreq = socket.inet_aton(server_address[0]) + socket.inet_aton(interface)
+        self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    else:
+      super().__init__(server_address, _UDPHandler)
+
     self._dispatcher = dispatcher
+    print(self.allow_reuse_address)
 
   def verify_request(self, request, client_address):
     """Returns true if the data looks like a valid OSC UDP datagram."""
@@ -114,7 +128,6 @@ class OSCUDPServer(socketserver.UDPServer):
   def dispatcher(self):
     """Dispatcher accessor for handlers to dispatch osc messages."""
     return self._dispatcher
-
 
 class BlockingOSCUDPServer(OSCUDPServer):
   """Blocking version of the UDP server.
