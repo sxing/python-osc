@@ -20,17 +20,20 @@ def print_compute_handler(unused_addr, args, volume):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--ip",
-      default="127.0.0.1", help="The ip to listen on")
+      default="127.0.0.1", help="The ip (multicast or unicast) to listen on")
   parser.add_argument("--port",
       type=int, default=5005, help="The port to listen on")
+  parser.add_argument("--ifaceip",
+      default="127.0.0.1", help="The ip of the interface to listen on, if multicast")
   args = parser.parse_args()
 
   dispatcher = dispatcher.Dispatcher()
-  dispatcher.map("/filter", print)
-  dispatcher.map("/volume", print_volume_handler, "Volume")
-  dispatcher.map("/logvolume", print_compute_handler, "Log volume", math.log)
+  dispatcher.map("/*", print)
 
-  server = osc_server.ThreadingOSCUDPServer(
-      (args.ip, args.port), dispatcher)
-  print("Serving on {}".format(server.server_address))
+  address = (args.ip, args.port)
+  interface_addr = args.ifaceip
+
+  server = osc_server.ThreadingOSCUDPServer(address, dispatcher, interface_addr)
+  
+  print("Listening to {} through {}".format(address, interface_addr))
   server.serve_forever()
